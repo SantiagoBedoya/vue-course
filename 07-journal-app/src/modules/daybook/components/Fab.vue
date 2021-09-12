@@ -1,5 +1,5 @@
 <template>
-  <button class="btn btn-primary">
+  <button @click="$emit('on:click')" class="btn btn-primary">
     <i :class="icon" class="fa fa-2x"></i>
   </button>
 </template>
@@ -23,6 +23,7 @@ button {
   height: 40px;
   position: fixed;
   right: 20px;
-  width: 40px;
+  width:40px;
 }
 </style>
+
