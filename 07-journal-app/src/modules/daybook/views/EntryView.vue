@@ -7,7 +7,8 @@
         <span class="mx-2 fs-4 fw-light">{{yearDay}}</span>
       </div>
       <div>
-        <button class="btn btn-danger mx-2">
+        <input type="file" @change="onSelectedImage">
+        <button v-if="entry.id" class="btn btn-danger mx-2" @click="onDeleteEntry">
           Borrar <i class="fa fa-trash-alt"></i>
         </button>
         <button class="btn btn-primary mx-2">
@@ -19,8 +20,14 @@
     <div class="d-flex flex-column px-3 h-75">
       <textarea v-model="entry.text" placeholder="¿Que sucedio hoy?"></textarea>
     </div>
-    <img
+    <!-- <img
       src="https://www.elcarrocolombiano.com/wp-content/uploads/2017/04/20170412-DODGE-CHALLENGER-SRT-DEMON-2018-01.jpg"
+      alt="entry-picture"
+      class="img-thumbnail"
+    /> -->
+    <img
+      v-if="localImage"
+      :src="localImage"
       alt="entry-picture"
       class="img-thumbnail"
     />  
@@ -31,6 +38,7 @@
 <script>
 import { defineAsyncComponent } from "vue";
 import { mapGetters, mapActions } from "vuex";
+import Swal from 'sweetalert2'
 import getDayMonthYear from "../helpers/getDayMonthYear";
 
 export default {
@@ -46,17 +54,75 @@ export default {
   data() {
     return {
       entry: null,
+      localImage: null,
+      file: null
     };
   },
   methods: {
-    ...mapActions('journal', ['updateEntry']),
+    ...mapActions('journal', ['updateEntry', 'createEntry', 'deleteEntry']),
     loadEntry() {
-      const entry = this.getEntryById(this.id);
-      if (!entry) return this.$router.push({ name: "no-entry" });
+      let entry;
+      if(this.id === 'new'){
+        entry = {
+          text: '',
+          date: new Date().getTime()
+        }
+      }else{
+        entry = this.getEntryById(this.id);
+        if (!entry) return this.$router.push({ name: "no-entry" });
+      }
       this.entry = entry;
     },
     async saveEntry(){
-      this.updateEntry(this.entry);
+
+      new Swal({
+        title: 'Espere por favor', 
+        allowOutsideClick: false
+      })
+      Swal.showLoading();
+
+      if(this.entry.id){
+        await this.updateEntry(this.entry);  
+      }else{
+        const id = await this.createEntry(this.entry);
+        this.$router.push({name: 'entry', params: {id}});
+      }
+      Swal.fire('Guardado', 'Entrada registrada con exito', 'success')
+    },
+    async onDeleteEntry(){
+      const {isConfirmed} = await Swal.fire({
+        title: '¿Estas seguro?',
+        text: 'Una vez borrado, no se puede recuperar',
+        showDenyButton: true,
+        confirmButtonText: 'Si, estoy seguro'
+      });
+      if(isConfirmed){
+        new Swal({
+          title: 'Espere por favor',
+          allowOutsideClick: false
+        })
+        Swal.showLoading();
+        await this.deleteEntry(this.entry.id);
+        this.$router.push({name: 'no-entry'});
+        return Swal.fire('Eliminado', '', 'success');
+      }
+    },
+    onSelectedImage(e){
+      const file = e.target.files[0];
+      if(!file) {
+        this.localImage = null;
+        this.file = null;
+        return;
+      }
+
+      this.file = file;
+
+      const fr = new FileReader();
+      fr.onload = () => this.localImage = fr.result;
+      fr.readAsDataURL(file)
+    },
+    onSelectImage(){
+
     }
   },
   created() {
